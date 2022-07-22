@@ -159,15 +159,15 @@ export abstract class S3Repo<T extends Entity<any>, R = void, U extends IS3RepoC
   }
 
   public async saveBatch (objects: T[], partialParams: Partial<SaveParams> = {}): Promise<Result<R>> {
-    return await Rx.from(objects).pipe(
+    return await Rx.lastValueFrom(Rx.from(objects).pipe(
       RxOps.mergeMap(async object => {
         return await this.save(object, partialParams)
       })
-    ).toPromise()
+    ))
   }
 
   public async loadBatch (keys: string[], partialParams: Partial<LoadParams> = {}): Promise<Result<Map<string, Result<T>>>> {
-    return await Rx.from(keys).pipe(
+    return await Rx.lastValueFrom(Rx.from(keys).pipe(
       RxOps.mergeMap(async key => {
         return {
           key,
@@ -180,17 +180,16 @@ export abstract class S3Repo<T extends Entity<any>, R = void, U extends IS3RepoC
           map.set(object.key, object.value)
           return map
         }, new Map<string, Result<T>>()))
-      }),
-    ).toPromise()
+      })))
   }
 
   public async getObjectVersions (key: string): Promise<ListVersionsResponse['Versions']> {
-    return await this.listAllObjectVersions({ Prefix: key }).pipe(
+    return await Rx.lastValueFrom(this.listAllObjectVersions({ Prefix: key }).pipe(
       RxOps.filter(versionObject => {
         return versionObject.Key === key
       }),
       RxOps.toArray()
-    ).toPromise()
+    ))
   }
 
   public listAllObjectVersions (partialParams: Partial<ListVersionsParams> = {}): Rx.Observable<AWS.S3.ObjectVersionList[0]> {

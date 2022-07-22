@@ -117,7 +117,7 @@ export abstract class DynamoRepo<T extends Entity<any>, U extends IDynamoRepoCon
   }
 
   public async removeBatch (keys: string[]): Promise<Result<void>> {
-    const results = await Rx.from(keys).pipe(
+    const results = await Rx.lastValueFrom(Rx.from(keys).pipe(
       // we can have a maximum of 25 request items in a DynamoDB `batchWrite` request
       RxOps.bufferCount(25),
       RxOps.mergeMap(async (objectBatch) => {
@@ -130,7 +130,7 @@ export abstract class DynamoRepo<T extends Entity<any>, U extends IDynamoRepoCon
         }
       }),
       RxOps.toArray()
-    ).toPromise()
+    ))
     if (results.every(result => result.isSuccess)) {
       return Result.ok()
     }
@@ -139,7 +139,7 @@ export abstract class DynamoRepo<T extends Entity<any>, U extends IDynamoRepoCon
   }
 
   public async saveBatch (objects: T[]): Promise<Result<void>> {
-    const results = await Rx.from(objects).pipe(
+    const results = await Rx.lastValueFrom(Rx.from(objects).pipe(
       // we can have a maximum of 25 request items in a DynamoDB `batchWrite` request
       RxOps.bufferCount(25),
       RxOps.mergeMap(async (objectBatch) => {
@@ -152,7 +152,7 @@ export abstract class DynamoRepo<T extends Entity<any>, U extends IDynamoRepoCon
         }
       }),
       RxOps.toArray()
-    ).toPromise()
+    ))
     if (results.every(result => result.isSuccess)) {
       return Result.ok()
     }
@@ -162,7 +162,7 @@ export abstract class DynamoRepo<T extends Entity<any>, U extends IDynamoRepoCon
 
   public async loadBatch (keys: string[]): Promise<Result<Map<string, Result<T>>>> {
     try {
-      const responseItems = await Rx.from(keys).pipe(
+      const responseItems = await Rx.lastValueFrom(Rx.from(keys).pipe(
         // we can have a maximum of 100 request items in a DynamoDB `batchGet` request
         RxOps.bufferCount(100),
         RxOps.mergeMap(async keys => {
@@ -173,7 +173,7 @@ export abstract class DynamoRepo<T extends Entity<any>, U extends IDynamoRepoCon
         }),
         RxOps.concatMap(responseItems => responseItems),
         RxOps.toArray()
-      ).toPromise()
+      ))
       // NOTE: this does not work when both a hashKey and a rangeKey are defined for the table
       const indexKeys = Object.keys(this.toPrimaryKeyAttribute(''))
       const map = (responseItems as any).reduce((profiles, responseObject: any) => {
